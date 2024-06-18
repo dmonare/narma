@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DM Chat</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="icon" href="https://i.ibb.co/qNq4Nj7/narama-removebg-preview.png" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            align-items: stretch;
+        }
+
+        .members-list {
+            width: 25%;
+            background-color: #ffffff;
+            overflow-y: auto;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-right: auto;
+        }
+
+        .members-list h4 {
+            background-color: #007bff;
+            color: #ffffff;
+            padding: 1rem;
+            margin: 0;
+            text-align: center;
+        }
+
+        .list-group-item {
+            padding: 1rem;
+            border: none;
+            transition: background-color 0.3s ease;
+        }
+
+        .list-group-item:hover {
+            background-color: #f1f1f1;
+            cursor: pointer;
+        }
+
+        .chat-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: #ffffff;
+            border: 1px solid #ddd;
+            border-radius: 0.25rem;
+            margin-left: 1rem;
+        }
+
+        .chat-messages {
+            flex-grow: 1;
+            overflow-y: auto; 
+            padding: 1rem;
+            background-color: #f4f4f9;
+            max-height: calc(100vh - 157px);
+        }
+
+        .message-container {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .message-container.right {
+            flex-direction: row-reverse; 
+        }
+
+        .profile-picture {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 1rem; 
+            margin-left: 1rem;
+        }
+
+        .message-details {
+            background-color: #e9ecef;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            position: relative;
+            max-width: 70%; 
+        }
+
+        .message-container.right .message-details {
+            background-color: #d1e7dd;
+        }
+
+        .message-sender {
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 0.5rem;
+        }
+
+        .message-timestamp {
+            font-size: 0.7rem; 
+            color: #6c757d;
+            position: absolute;
+            top: 0.3rem;
+            right: 0.3rem;
+        }
+
+        .message-content {
+            margin-top: 0.5rem;
+            white-space: pre-wrap; 
+        }
+
+        .message-media {
+            max-width: 100%;
+            margin-top: 0.5rem;
+            border-radius: 0.25rem;
+        }
+
+        .message-actions {
+            display: flex;
+            align-items: center; 
+            margin-top: 0.5rem;
+        }
+
+        .delete-button {
+            background-color: transparent;
+            border: none;
+            color: #dc3545;
+            cursor: pointer;
+            margin-left: 0.5rem;
+        }
+
+        .delete-button:hover {
+            text-decoration: underline;
+        }
+
+        .delete-button i {
+            font-size: 1.2rem; 
+        }
+
+        .chat-input {
+            padding: 1rem;
+            border-top: 1px solid #ddd;
+            background-color: #ffffff;
+        }
+
+        .input-group .form-control {
+            border-radius: 0.25rem 0 0 0.25rem;
+        }
+
+        .input-group .btn {
+            border-radius: 0 0.25rem 0.25rem 0;
+        }
+
+        .custom-file-input {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .custom-file-label {
+            cursor: pointer;
+        }
+    </style>
+    {% include 'navbar.html' %}
+</head>
+<body>
+    <div class="container">
+        <div class="members-list">
+            <h4>Members</h4>
+            <ul class="list-group list-group-flush">
+                {% for member in members %}
+                    {% if member.id != current_user.id %}
+                        <li class="list-group-item d-flex align-items-center" data-url="{{ url_for('dm_chat', recipient_id=member.id) }}">
+                            <img src="{{ url_for('static', filename=member.profile_picture) }}" class="rounded-circle mr-2" width="30" height="30" alt="{{ member.username }}'s Profile Picture">
+                            <span style="margin-left: 5px;">{{ member.username }}</span>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="chat-section">
+            <div class="chat-messages" id="chat-messages">
+                {% for message in messages[::1] %}
+                    <div class="message-container {% if message.sender_id == current_user.id %}right{% endif %}">
+                        <a href="{{ url_for('user_profile', username=message.sender.username) }}">
+                            {% if message.sender.profile_picture %}
+                                <img src="{{ url_for('static', filename=message.sender.profile_picture) }}" alt="Profile Picture" class="profile-picture">
+                            {% else %}
+                                <img src="{{ url_for('static', filename='uploads/default.jpg') }}" alt="Default Profile Picture" class="profile-picture">
+                            {% endif %}
+                        </a>
+                        <div class="message-details">
+                            <span class="message-sender" onclick="navigateToProfile('{{ message.sender.username }}')">{{ message.sender.username }}</span>
+                            <div class="message-content">{{ message.content }}</div>
+                            {% if message.media_path %}
+                            {% if message.media_path.endswith('.mp4') %}
+                                <video controls class="message-media" style="max-width: 100%; max-height: 400px;">
+                                    <source style="border-radius: 10px;" src="{{ url_for('static', filename=message.media_path) }}" type="video/mp4">
+                                    Your browser does not support the video tag.
+                                </video>
+                            {% else %}
+                                <img style="border-radius: 10px; max-width: 100%; max-height: 400px;" src="{{ url_for('static', filename=message.media_path) }}" alt="Uploaded Media" class="img-fluid message-media" onclick="openFullscreen(this)">
+                            {% endif %}
+                        {% endif %}
+                        
+        
+                        </div>
+                        <div class="message-actions">
+                            {% if message.sender_id == current_user.id %}
+                            <form action="{{ url_for('delete_directmessage', message_id=message.id) }}" method="POST">
+                                <input type="hidden" name="_method" value="DELETE">
+                                <button type="submit" class="delete-button"><i class="fas fa-trash-alt"></i></button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            {% if recipient.id != current_user.id %}
+            <div class="chat-input">
+                <form action="{{ url_for('send_dm', recipient_id=recipient.id) }}" method="POST" enctype="multipart/form-data">
+                    <div class="input-group mb-3">
+                        <input type="text" name="message" class="form-control" placeholder="Type your message here...">
+                        <div class="input-group-append">
+                            <input type="file" name="media" id="media" class="form-control custom-file-input" accept="image/*, video/*" style="display: none;">
+                            <label class="custom-file-label" for="media" style="cursor: pointer; padding: 0 10px;">
+                                <i class="fas fa-file-upload fa-2x"></i>
+                            </label>                  
+                        </div>
+                        <button class="btn btn-primary" type="submit"><i class="fas fa-paper-plane"></i> Send</button>
+                    </div>
+                </form>
+            </div>
+        {% endif %}
+        
+            
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/js/all.min.js"></script>
+    
+    <script>
+        document.querySelectorAll('.list-group-item').forEach(item => {
+            item.addEventListener('click', function() {
+                window.location.href = this.getAttribute('data-url');
+            });
+        });
+
+        document.getElementById('media').addEventListener('change', function(e) {
+            var fileName = e.target.files[0].name;
+            var nextSibling = e.target.nextElementSibling;
+            nextSibling.innerText = fileName;
+        });
+
+        function navigateToProfile(username) {
+            window.location.href = `/user/${username}`;
+        }
+
+        function openFullscreen(element) {
+            if (element.requestFullscreen) {
+                element.requestFullscreen();
+            } else if (element.mozRequestFullScreen) { 
+                element.mozRequestFullScreen();
+            } else if (element.webkitRequestFullscreen) { 
+                element.webkitRequestFullscreen();
+            } else if (element.msRequestFullscreen) { 
+                element.msRequestFullscreen();
+            }
+        }
+        document.addEventListener("DOMContentLoaded", function(event) {
+            var chatMessages = document.getElementById('chat-messages');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        });
+    </script>
+</body>
+</html>
+

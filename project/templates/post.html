@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POST | {{ post.title }}</title>
+    <link rel="icon" href="https://i.ibb.co/qNq4Nj7/narama-removebg-preview.png" type="image/x-icon">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
+        }
+        .post-container {
+            margin-bottom: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .post-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .profile-picture {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin-right: 10px;
+            object-fit: cover; 
+            cursor: pointer;
+        }
+        .username {
+            font-weight: bold;
+            color: #0d6efd;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+        .timestamp {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .post-title {
+            font-size: 1.75rem;
+            margin-bottom: 10px;
+            color: #343a40;
+        }
+        .post-text {
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 15px;
+            color: #555;
+        }
+        .reaction-buttons {
+            margin-bottom: 15px;
+        }
+        .reaction-buttons .btn {
+            margin-right: 10px;
+        }
+        .like-dislike-count {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        .comments-section {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            background-color: #f0f0f0;
+        }
+        .comment {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .comment .profile-picture {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 10px;
+            object-fit: cover; 
+            cursor: pointer;
+        }
+        .comment .comment-info {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .comment .comment-info .username {
+            font-weight: bold;
+            color: #0d6efd;
+            margin-right: 5px;
+            cursor: pointer;
+        }
+        .comment .comment-info .timestamp {
+            font-size: 0.8rem;
+            color: #666;
+        }
+        .comment .comment-content {
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        .add-comment-section {
+            margin-top: 20px;
+        }
+        .add-comment-section textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        .btn-warning.active {
+            background-color: yellow;
+            color: black;
+        }
+        .btn-warning.inactive {
+            background-color: lightgrey;
+            color: darkgrey;
+        }
+
+    </style>
+</head>
+<body>
+
+{% include 'navbar.html' %}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="post-container">
+                <div class="post-header">
+                    {% if post.author.profile_picture %}
+                        <img src="{{ url_for('static', filename=post.author.profile_picture) }}" alt="Profile Picture" class="profile-picture" onclick="navigateToProfile('{{ post.author.username }}')">
+                    {% else %}
+                        <img src="{{ url_for('static', filename='path/to/default/profile_picture.png') }}" alt="Default Profile Picture" class="profile-picture" onclick="navigateToProfile('{{ post.author.username }}')">
+                    {% endif %}
+                    <div>
+                        <span class="username" onclick="navigateToProfile('{{ post.author.username }}')">{{ post.author.username }}</span>
+                        <span class="timestamp">{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                    </div>
+                </div>
+                <h2 class="post-title">{{ post.title }}</h2>
+                <p class="post-text">{{ post.text }}</p>
+                {% if post.media_path %}
+                <div class="mb-3">
+                    {% if post.media_path.endswith(('jpg', 'jpeg', 'png', 'gif')) %}
+                        <img src="{{ url_for('static', filename=post.media_path) }}" onclick="openFullscreen(this)"  style="border-radius: 4%;" width="450" class="img-fluid" alt="Post media">
+                    {% elif post.media_path.endswith(('webp')) %}
+                        <picture>
+                            <source srcset="{{ url_for('static', filename=post.media_path) }}" type="image/webp">
+                            <img src="{{ url_for('static', filename=post.media_path.replace('.webp', '.png')) }}" onclick="openFullscreen(this)" style="border-radius: 4%;" class="img-fluid" alt="Post media">
+                        </picture>
+                    {% elif post.media_path.endswith(('mp4', 'webm', 'ogg')) %}
+                        <video controls class="img-fluid">
+                            <source src="{{ url_for('static', filename=post.media_path) }}" onclick="openFullscreen(this)" type="video/{{ post.media_path.split('.')[-1] }}">
+                            Your browser does not support the video tag.
+                        </video>
+                    {% endif %}
+                </div>
+            {% endif %}
+            
+            
+            <div class="reaction-buttons d-flex justify-content-between">
+                <div>
+                    <form action="{{ url_for('react_to_post', post_id=post.id, reaction_type='like') }}" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-thumbs-up"></i> Like
+                        </button>
+                    </form>
+                    <form action="{{ url_for('react_to_post', post_id=post.id, reaction_type='dislike') }}" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-thumbs-down"></i> Dislike
+                        </button>
+                    </form>
+                </div>
+                <div>
+                    <form action="{{ url_for('toggle_favorite', post_id=post.id) }}" method="POST" class="d-inline">
+                        <button id="favorite-btn" type="submit" class="btn btn-warning">
+                            <i class="fas fa-star"></i> Favorite
+                        </button>          
+                    </form>
+                </div>
+            </div>
+            
+                <div class="like-dislike-count">
+                    <span class="fw-bold">{{ likes }}</span> Likes | <span class="fw-bold">{{ dislikes }}</span> Dislikes
+                </div>
+            </div>
+
+            {% if comments %}
+            <div class="comments-section">
+                <h3 class="mt-4 mb-3">Comments</h3>
+                {% for comment in comments %}
+                <div class="comment">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="comment-info">
+                            {% if comment.user %}
+                                <img src="{{ url_for('static', filename=comment.user.profile_picture) }}" alt="Profile Picture" class="profile-picture" onclick="navigateToProfile('{{ comment.user.username }}')">
+                                <span class="username" onclick="navigateToProfile('{{ comment.user.username }}')">{{ comment.user.username }}</span>
+                            {% else %}
+                                <img src="{{ url_for('static', filename='path/to/default/profile_picture.png') }}" alt="Default Profile Picture" class="profile-picture">
+                                <span class="username">Anonymous</span>
+                            {% endif %}
+                            <span class="timestamp">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                        </div>
+                        {% if current_user.is_authenticated and (current_user.is_admin or comment.user_id == current_user.id) %}
+                            <form action="{{ url_for('delete_comment', comment_id=comment.id) }}" method="post">
+                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                    <div class="comment-content">{{ comment.text }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if current_user.is_authenticated %}
+            <div class="add-comment-section">
+                <h3 class="mt-4 mb-3">Add a Comment</h3>
+                <form id="comment-form" action="{{ url_for('add_comment', post_id=post.id) }}" method="POST">
+                    <div class="mb-3">
+                        <textarea class="form-control" id="comment" name="comment" rows="3" placeholder="Write your comment here..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Post Comment</button>
+                </form>
+            </div>
+            {% else %}
+            <p class="mt-4"><a href="{{ url_for('login') }}">Log in</a> to comment.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+
+    $('#comment').keydown(function(e) {
+        if (e.keyCode == 13 && !e.shiftKey) {
+            e.preventDefault();
+            $('#comment-form').submit();
+        }
+    });
+
+
+    $('#comment-form').submit(function(e) {
+        e.preventDefault();
+
+        var formData = $(this).serialize();
+        var formAction = $(this).attr('action');
+
+        $.post(formAction, formData, function(response) {
+            $('#comment').val('');
+            location.reload();
+        });
+    });
+
+    function navigateToProfile(username) {
+        window.location.href = '/user/' + username;
+    }
+    function openFullscreen(element) {
+            if (element.requestFullscreen) {
+                element.requestFullscreen();
+            } else if (element.mozRequestFullScreen) { 
+                element.mozRequestFullScreen();
+            } else if (element.webkitRequestFullscreen) { 
+                element.webkitRequestFullscreen();
+            } else if (element.msRequestFullscreen) { 
+                element.msRequestFullscreen();
+            }
+        }
+
+    if (window.history.replaceState) {
+        window.history.replaceState(null, null, window.location.href);
+    }
+
+
+</script>
+
+</body>
+</html>
